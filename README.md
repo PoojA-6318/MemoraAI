@@ -1,0 +1,3 @@
+# 🧠 Memora AI
+
+Memora AI is an AI-powered Operational Memory System designed to preserve and retrieve organizational knowledge. It captures information from meeting transcripts, project documents, emails, and team discussions, then uses Large Language Models (LLMs) to extract key decisions, tasks, risks, and insights. With intelligent search and contextual question answering, Memora AI helps teams reduce knowledge loss, improve collaboration, and retain institutional memory.
