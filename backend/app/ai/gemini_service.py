@@ -1,62 +1,57 @@
 import json
-import os
 
-from dotenv import load_dotenv
-from google import genai
-
-load_dotenv()
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+from app.ai.config import settings
+from app.ai.gemini_client import client
+from app.ai.prompts import SYSTEM_PROMPT, EXTRACTION_PROMPT
 
 
-def extract_memory(meeting_text: str):
+def extract_memory(document_text: str):
+    """
+    Analyze a document and extract operational memory.
+    Returns a dictionary compatible with the current backend.
+    """
 
     prompt = f"""
-You are Memora AI, an AI Operational Memory System.
+{SYSTEM_PROMPT}
 
-Analyze the meeting notes and extract:
+{EXTRACTION_PROMPT}
 
-1. Title
-2. Summary
-3. Decision
-4. Tasks
-5. Risks
+Document:
 
-Return ONLY valid JSON.
-
-Example:
-
-{{
-"title":"",
-"summary":"",
-"decision":"",
-"tasks":[],
-"risks":[]
-}}
-
-Meeting Notes:
-
-{meeting_text}
+{document_text}
 """
 
-    response = client.models.generate_content(
-        model="gemini-flash-latest",
-        contents=prompt,
-    )
-
-    text = response.text.strip()
-    print("Gemini Raw Response:")
-    print(text)
-
-    # Remove markdown if Gemini wraps JSON
-    text = text.replace("```json", "").replace("```", "").strip()
-
     try:
-        return json.loads(text)
-    except json.JSONDecodeError:
+        response = client.models.generate_content(
+            model=settings.MODEL_NAME,
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json"
+            }
+        )
+
+        text = response.text.strip()
+
+        memory = json.loads(text)
+
+        return {
+            "title": memory.get("title", ""),
+            "summary": memory.get("summary", ""),
+            "decision": memory.get("decision", ""),
+            "tasks": memory.get("tasks", []),
+            "risks": memory.get("risks", [])
+        }
+
+    except Exception as e:
+
+        print("=" * 60)
+        print("MEMORA AI ERROR")
+        print(e)
+        print("=" * 60)
+
         return {
             "title": "",
-            "summary": text,
+            "summary": "AI extraction failed.",
             "decision": "",
             "tasks": [],
             "risks": []

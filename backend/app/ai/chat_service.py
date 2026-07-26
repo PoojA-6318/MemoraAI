@@ -1,38 +1,43 @@
-import os
-
-from dotenv import load_dotenv
-from google import genai
-
-load_dotenv()
-
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+from app.ai.config import settings
+from app.ai.gemini_client import client
+from app.ai.prompts import CHAT_PROMPT
 
 
-def ask_memora(context: str, question: str):
+def ask_memora(context: str, question: str) -> str:
+    """
+    Answers user questions using the stored organizational memories.
+    """
 
     prompt = f"""
-You are Memora AI.
+{CHAT_PROMPT}
 
-You answer ONLY using the meeting memories provided below.
-
-If the answer cannot be found,
-say:
-
-"I couldn't find that information in the stored organizational memory."
-
-Meeting Memories:
+==============================
+ORGANIZATIONAL MEMORIES
+==============================
 
 {context}
 
-
-Question:
+==============================
+QUESTION
+==============================
 
 {question}
 """
 
-    response = client.models.generate_content(
-        model="gemini-flash-latest",
-        contents=prompt,
-    )
+    try:
 
-    return response.text
+        response = client.models.generate_content(
+            model=settings.MODEL_NAME,
+            contents=prompt
+        )
+
+        return response.text.strip()
+
+    except Exception as e:
+
+        print("=" * 60)
+        print("CHATBOT ERROR")
+        print(e)
+        print("=" * 60)
+
+        return "Sorry, I couldn't answer your question."
