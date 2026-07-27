@@ -1,4 +1,4 @@
-import Particles from "react-tsparticles";
+import Particles from "@tsparticles/react";
 
 function ParticlesBg() {
   return (

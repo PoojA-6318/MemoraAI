@@ -1,75 +1,93 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
-
 import ParticlesBg from "../components/ParticlesBg";
-
 import BrainMap from "../components/BrainMap";
-
-//import ParticlesBg from "../components/ParticlesBg";
+import api from "../services/api";
 
 function Dashboard() {
+  const navigate = useNavigate();
+  const [timeline, setTimeline] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchVal, setSearchVal] = useState("");
+
+  // Ask Memora Card State
+  const [dashQuestion, setDashQuestion] = useState("Why did we move away from flat enterprise pricing?");
+  const [dashAnswer, setDashAnswer] = useState("Three linked memories indicate the decision followed Q3 churn analysis and executive approval.");
+  const [dashLoading, setDashLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchTimeline = async () => {
+      try {
+        const response = await api.get("/timeline");
+        setTimeline(response.data);
+      } catch (err) {
+        console.error("Error fetching timeline for dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTimeline();
+  }, []);
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter" && searchVal.trim()) {
+      navigate(`/chat?q=${encodeURIComponent(searchVal.trim())}`);
+    }
+  };
+
+  const handleDashAskSubmit = async () => {
+    if (!dashQuestion.trim()) return;
+    setDashLoading(true);
+    setDashAnswer("");
+    try {
+      const response = await api.post("/ask", { question: dashQuestion.trim() });
+      setDashAnswer(response.data.answer);
+    } catch (err) {
+      console.error("Dashboard AI ask failed:", err);
+      setDashAnswer("AI query failed. Please verify your connection.");
+    } finally {
+      setDashLoading(false);
+    }
+  };
+
+  const memoriesCount = timeline.length;
+  const decisionsCount = timeline.filter(item => item.decision && item.decision.trim()).length;
 
   return (
-
     <>
-
       <ParticlesBg />
-
-
 
       <div className="flex min-h-screen bg-gradient-to-br from-[#06030d] via-[#0a0718] to-[#04141a] text-white">
 
-
-
         <Sidebar />
-
-
 
         <div className="flex-1 p-10">
 
-
-
           <div className="flex justify-between items-center mb-10">
 
-
-
             <div>
-
               <p className="text-cyan-400 text-sm tracking-widest uppercase">
-
                 Organizational Memory Operating System
-
               </p>
-
-
 
               <h1 className="text-6xl font-bold mt-2 bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-
                 Memora AI
-
               </h1>
 
-
-
               <p className="text-zinc-400 mt-3 max-w-xl">
-
                 Prevent organizational memory loss by capturing decisions,
-
                 meetings, project knowledge and employee expertise.
-
               </p>
-
             </div>
 
-
-
             <input
-
               placeholder="Ask Memora anything..."
-
-              className="w-[420px] bg-black/30 backdrop-blur-xl border border-cyan-500/20 rounded-full px-6 py-3 outline-none"
-
+              value={searchVal}
+              onChange={(e) => setSearchVal(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              className="w-[420px] bg-black/30 backdrop-blur-xl border border-cyan-500/20 rounded-full px-6 py-3 outline-none focus:border-cyan-400 transition"
             />
-
           </div>
 
 
@@ -140,47 +158,27 @@ function Dashboard() {
 
             <div className="grid grid-cols-2 gap-6">
 
-
-
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6">
-
                 <p className="text-zinc-400">Memories Stored</p>
-
-                <h2 className="text-5xl font-bold mt-3">48,192</h2>
-
+                <h2 className="text-5xl font-bold mt-3">{memoriesCount}</h2>
               </div>
 
-
-
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6">
-
                 <p className="text-zinc-400">Decisions Captured</p>
-
-                <h2 className="text-5xl font-bold mt-3">2,847</h2>
-
+                <h2 className="text-5xl font-bold mt-3">{decisionsCount}</h2>
               </div>
 
-
-
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6">
-
                 <p className="text-zinc-400">Projects</p>
-
-                <h2 className="text-5xl font-bold mt-3">37</h2>
-
+                <h2 className="text-5xl font-bold mt-3">{memoriesCount === 0 ? 0 : Math.max(1, Math.round(memoriesCount * 0.4))}</h2>
               </div>
-
-
 
               <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6">
-
                 <p className="text-zinc-400">Knowledge Gaps</p>
-
-                <h2 className="text-5xl font-bold text-red-400 mt-3">3</h2>
-
+                <h2 className="text-5xl font-bold text-red-400 mt-3">
+                  {timeline.filter(item => item.risks && item.risks.trim()).length}
+                </h2>
               </div>
-
-
 
             </div>
 
@@ -209,15 +207,21 @@ function Dashboard() {
 
 
               <div className="space-y-5">
-
-                <p>09:12 AM — Pricing Strategy Approved</p>
-
-                <p>11:43 AM — Onboarding Playbook Added</p>
-
-                <p>Yesterday — Customer Churn Analysis Generated</p>
-
-                <p>2 Days Ago — Migration Knowledge Captured</p>
-
+                {loading ? (
+                  <p className="text-zinc-500 animate-pulse">Loading timeline feed...</p>
+                ) : timeline.length === 0 ? (
+                  <p className="text-zinc-500">No events captured yet.</p>
+                ) : (
+                  timeline.slice(0, 4).map((item) => {
+                    const date = new Date(item.created_at);
+                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return (
+                      <p key={item.id} className="truncate" title={item.title}>
+                        <span className="text-cyan-400 font-semibold">{timeStr}</span> — {item.title}
+                      </p>
+                    );
+                  })
+                )}
               </div>
 
             </div>
@@ -433,39 +437,37 @@ function Dashboard() {
 
 </div>
 
-          {/* Ask Memora */}
-
-
-
           <div className="mt-8 bg-white/5 backdrop-blur-xl rounded-3xl p-8">
 
-
-
             <h2 className="text-3xl font-bold text-cyan-300 mb-6">
-
               Ask Memora
-
             </h2>
 
-
-
-            <div className="bg-purple-500/10 rounded-2xl p-4 mb-4 w-fit ml-auto">
-
-              Why did we move away from flat enterprise pricing?
-
+            <div className="flex gap-4 mb-6">
+              <input
+                type="text"
+                value={dashQuestion}
+                onChange={(e) => setDashQuestion(e.target.value)}
+                placeholder="Ask a question about meeting records..."
+                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-cyan-500 transition text-white"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleDashAskSubmit();
+                }}
+              />
+              <button
+                onClick={handleDashAskSubmit}
+                disabled={dashLoading}
+                className="px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold transition disabled:opacity-50"
+              >
+                {dashLoading ? "Querying..." : "Send"}
+              </button>
             </div>
 
-
-
-            <div className="bg-black/30 rounded-2xl p-6">
-
-              Three linked memories indicate the decision followed
-
-              Q3 churn analysis and executive approval.
-
-            </div>
-
-
+            {dashAnswer && (
+              <div className="bg-black/30 rounded-2xl p-6 border border-white/5 whitespace-pre-wrap leading-relaxed text-zinc-300">
+                {dashAnswer}
+              </div>
+            )}
 
           </div>
 

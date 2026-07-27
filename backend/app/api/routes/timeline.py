@@ -24,6 +24,8 @@ def get_timeline(db: Session = Depends(get_db)):
             "title": memory.title,
             "summary": memory.summary,
             "decision": memory.decision,
+            "tasks": memory.tasks,
+            "risks": memory.risks,
             "created_at": memory.created_at
         })
 
